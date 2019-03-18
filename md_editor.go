@@ -47,7 +47,7 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 		if t.Operation == "Create" {
 			createFile(t.Content)
 		} else {
-			updateFile(t.Content, "Jan _2 15:04:05") //file name is placeholder
+			updateFile(t.Content, "Jan _2 15:04:05") //TODO: File name is placeholder. Please be sure that it exists
 		}
 
 	} else {
@@ -55,7 +55,7 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func createFile(content string) {
-	ctx := context.Background()
+	ctx := context.Background() //TODO: Make ctx, ts, tc and client global
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: config.Token},
 	)
@@ -96,16 +96,10 @@ func updateFile(content, filename string) {
 		SHA:     file.SHA,
 		//Committer: &github.CommitAuthor{Name: github.String("FirstName LastName"), Email: github.String("user@example.com")},
 	}
-	client.Repositories.UpdateFile(ctx, config.Username, config.Repo, "Jan _2 15:04:05", optsForUpdate)
+	client.Repositories.UpdateFile(ctx, config.Username, config.Repo, filename, optsForUpdate)
 }
 
 func main() {
-
-	/*repo := &github.Repository{
-		Name:    github.String("foo"),
-		Private: github.Bool(true),
-	}
-	client.Repositories.Create(ctx, "", repo)*/
 	jsonFile, err := os.Open("config.json")
 	if err != nil {
 		panic(err)
