@@ -16,7 +16,8 @@ import (
 )
 
 type markdown struct {
-	Text string `json:"text"`
+	Operation string `json:"operation"`
+	Content   string `json:"content"`
 }
 
 type Config struct {
@@ -41,38 +42,61 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			panic(err)
 		}
-		log.Println(t.Text)
-
-		ctx := context.Background()
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: config.Token},
-		)
-		tc := oauth2.NewClient(ctx, ts)
-
-		client := github.NewClient(tc)
-
-		// list all repositories for the authenticated user
-		/*	repos, _, _ := client.Repositories.List(ctx, "", nil)
-			fmt.Println(repos)*/
-		fileContent := []byte(t.Text)
-
-		// Note: the file needs to be absent from the repository as you are not
-		// specifying a SHA reference here.
-
-		opts := &github.RepositoryContentFileOptions{
-			Message: github.String(time.Now().String()),
-			Content: fileContent,
-			Branch:  github.String("master"),
-			//Committer: &github.CommitAuthor{Name: github.String("FirstName LastName"), Email: github.String("user@example.com")},
+		log.Println(t.Operation)
+		log.Println(t.Content)
+		if t.Operation == "Create" {
+			createFile(t.Content)
+		} else {
+			updateFile(t.Content, "Jan _2 15:04:05") //file name is placeholder
 		}
-
-		//user, _, _ :=
-
-		client.Repositories.CreateFile(ctx, config.Username, config.Repo, time.Stamp+".md", opts)
 
 	} else {
 		fmt.Println("Unknown HTTP " + r.Method + "  Method")
 	}
+}
+func createFile(content string) {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: config.Token},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	fileContent := []byte(content)
+	opts := &github.RepositoryContentFileOptions{
+		Message: github.String(time.Now().String()),
+		Content: fileContent,
+		Branch:  github.String("master"),
+		//Committer: &github.CommitAuthor{Name: github.String("FirstName LastName"), Email: github.String("user@example.com")},
+	}
+	client.Repositories.CreateFile(ctx, config.Username, config.Repo, time.Stamp+".md", opts)
+}
+
+func updateFile(content, filename string) {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: config.Token},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+
+	client := github.NewClient(tc)
+	optsForGet := &github.RepositoryContentGetOptions{
+		Ref: "master",
+	}
+	file, _, _, err := client.Repositories.GetContents(ctx, config.Username, config.Repo, filename, optsForGet)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(file.SHA)
+	fileContent := []byte(content)
+	optsForUpdate := &github.RepositoryContentFileOptions{
+		Message: github.String(time.Now().String()),
+		Content: fileContent,
+		Branch:  github.String("master"),
+		SHA:     file.SHA,
+		//Committer: &github.CommitAuthor{Name: github.String("FirstName LastName"), Email: github.String("user@example.com")},
+	}
+	client.Repositories.UpdateFile(ctx, config.Username, config.Repo, "Jan _2 15:04:05", optsForUpdate)
 }
 
 func main() {
@@ -95,5 +119,7 @@ func main() {
 	fmt.Println(config.Repo)
 
 	http.HandleFunc("/", md_editor)
+	fmt.Println("Listenning and serving on port 8000. Please visit 127.0.0.1:8000...")
 	http.ListenAndServe(":8000", nil) // setting listening port
+
 }

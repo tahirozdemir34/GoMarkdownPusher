@@ -70,12 +70,13 @@
 			}
     </script>
     <script>
-      function doFunction(){
+      function doFunction(clickedID){
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "http://127.0.0.1:8000", true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.send(JSON.stringify({
-            text: document.getElementById("markdown").value
+						operation: clickedID,
+            content: document.getElementById("markdown").value
         }));
       }
     </script>
@@ -83,7 +84,8 @@
 
 	<body>
     	<div>
-        <button type="button" class="btn btn-primary btn-lg" onclick="doFunction();">Save</button>
+				<button id="Create" type="button" class="btn btn-primary btn-lg" onclick="doFunction(this.id);">Create</button>
+				<button id="Update" type="button" class="btn btn-primary btn-lg" onclick="doFunction(this.id);">Update</button>
         </div>
 		<div id="editor">
 		  <textarea id="markdown" :value="input" @input="update"></textarea>
