@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"encoding/base64"
@@ -26,7 +27,6 @@ type markdown struct {
 type Config struct {
 	Token    string `json:"token"`
 	Username string `json:"username"`
-	Repo     string `json:"repo"`
 }
 type Markdown struct {
 	Name string
@@ -67,9 +67,14 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Println(t.Operation)
 		log.Println(t.Content)
-		if t.Operation == "Create" {
-			createFile(t.Content)
-		} else if t.Operation == "listFiles" {
+		operation := strings.Split(t.Operation, "$")
+		if operation[0] == "Create" {
+			createFile(activeRepo, operation[1], t.Content)
+		} else if operation[0] == "Delete" {
+			deleteFile(t.Content, activeRepo, activeFile)
+		} else if operation[0] == "Update" {
+			updateFile(t.Content, activeRepo, activeFile)
+		} else if operation[0] == "listFiles" {
 			_, content, _, err := client.Repositories.GetContents(ctx, config.Username, t.Content, "", nil)
 			if err != nil {
 				panic(err)
@@ -93,7 +98,7 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(200)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
-		} else if t.Operation == "listRepos" {
+		} else if operation[0] == "listRepos" {
 			repos, _, _ := client.Repositories.List(ctx, "", nil)
 			list := []Markdown{}
 			for _, element := range repos {
@@ -109,7 +114,7 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(200)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
-		} else if t.Operation == "getFileContent" {
+		} else if operation[0] == "getFileContent" {
 			content, _, _, err := client.Repositories.GetContents(ctx, config.Username, activeRepo, t.Content, nil)
 			if err != nil {
 				panic(err)
@@ -127,8 +132,6 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(200)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
-		} else {
-			updateFile(t.Content, activeRepo, activeFile) //TODO: File name is placeholder. Please be sure that it exists
 		}
 
 	} else if (*r).Method == "OPTIONS" {
@@ -138,7 +141,9 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Unknown HTTP " + r.Method + "  Method")
 	}
 }
-func createFile(content string) {
+func createFile(reponame string, filename string, content string) {
+
+	fName := strings.Split(filename, ".")
 
 	ctx := context.Background() //TODO: Make ctx, ts, tc and client global
 	ts := oauth2.StaticTokenSource(
@@ -154,8 +159,38 @@ func createFile(content string) {
 		Branch:  github.String("master"),
 		//Committer: &github.CommitAuthor{Name: github.String("FirstName LastName"), Email: github.String("user@example.com")},
 	}
-	client.Repositories.CreateFile(ctx, config.Username, config.Repo, time.Now().String()+".md", opts)
+	client.Repositories.CreateFile(ctx, config.Username, reponame, fName[0]+".md", opts)
 
+}
+
+func deleteFile(content, reponame string, filename string) {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: config.Token},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+
+	client := github.NewClient(tc)
+	optsForGet := &github.RepositoryContentGetOptions{
+		Ref: "master",
+	}
+	file, _, _, err := client.Repositories.GetContents(ctx, config.Username, reponame, filename, optsForGet)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(file.SHA)
+	fileContent := []byte(content)
+	optsForUpdate := &github.RepositoryContentFileOptions{
+		Message: github.String(time.Now().String()),
+		Content: fileContent,
+		Branch:  github.String("master"),
+		SHA:     file.SHA,
+		//Committer: &github.CommitAuthor{Name: github.String("FirstName LastName"), Email: github.String("user@example.com")},
+	}
+	_, _, err = client.Repositories.DeleteFile(ctx, config.Username, reponame, filename, optsForUpdate)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func updateFile(content, reponame string, filename string) {
@@ -182,7 +217,7 @@ func updateFile(content, reponame string, filename string) {
 		SHA:     file.SHA,
 		//Committer: &github.CommitAuthor{Name: github.String("FirstName LastName"), Email: github.String("user@example.com")},
 	}
-	_, _, err = client.Repositories.UpdateFile(ctx, config.Username, config.Repo, filename, optsForUpdate)
+	_, _, err = client.Repositories.UpdateFile(ctx, config.Username, reponame, filename, optsForUpdate)
 	if err != nil {
 		panic(err)
 	}
@@ -199,10 +234,10 @@ func main() {
 
 	fmt.Println(config.Username)
 	fmt.Println(config.Token)
-	fmt.Println(config.Repo)
 
 	http.HandleFunc("/", md_editor)
 	fmt.Println("Listenning and serving on port 8000. Please visit 127.0.0.1:8000...")
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.ListenAndServe(":8000", nil) // setting listening port
 
 }

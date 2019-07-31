@@ -1,228 +1,48 @@
 <!DOCTYPE html>
 <html>
 
-<head>
+	<head>
+		<link rel = "stylesheet" type = "text/css" href = "/static/css/style.css" />
+		<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+		
+		<script src="/static/js/sendCUD.js"></script> 
+		<script src="/static/js/compileMarkdown.js"></script> -->
+		<script src="/static/js/axiosFunctions.js"></script> 
+		<script src="https://cdn.rawgit.com/showdownjs/showdown/1.0.1/dist/showdown.min.js"></script>
+		<!--<link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />-->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+		<!--<script src="//unpkg.com/@babel/polyfill@latest/dist/polyfill.min.js"></script>-->
 
-	<style>
-		html,
-		body {
-			margin: 0;
-			height: 100%;
-			overflow: hidden
-		}
-
-		html,
-		body,
-		#editor {
-			margin: 0;
-			height: 100%;
-			font-family: 'Helvetica Neue', Arial, sans-serif;
-			color: #333;
-		}
-
-		textarea,
-		#editor div {
-			display: inline-block;
-			width: 49%;
-			height: 100vh;
-			vertical-align: top;
-			box-sizing: border-box;
-			padding: 0 20px;
-		}
-
-		textarea {
-			border: none;
-			border-right: 1px solid #ccc;
-			resize: none;
-			outline: none;
-			background-color: #f6f6f6;
-			font-size: 14px;
-			font-family: 'Monaco', courier, monospace;
-			padding: 20px;
-		}
-
-		div.scroll {
-			margin: 5px;
-			padding: 5px;
-			height: 100vh;
-			overflow: auto;
-		}
-
-		code {
-			color: #f66;
-		}
-
-		.sidenav {
-			height: 100%;
-			width: 160px;
-			position: fixed;
-			z-index: 1;
-			top: 0;
-			left: 0;
-			background-color: #111;
-			overflow-x: hidden;
-			padding-top: 20px;
-		}
-
-		.main {
-			margin-left: 160px;
-			/* Same as the width of the sidenav */
-			font-size: 20px;
-			/* Increased text to enable scrolling */
-			padding: 15px 10px;
-		}
-
-		@media screen and (max-height: 450px) {
-			.sidenav {
-				padding-top: 15px;
+		<script type="text/javascript">
+			window.onload = function () {
+				listRepos('')
+				document.getElementById("Create").disabled = true;
+				document.getElementById("Update").disabled = true;
+				document.getElementById("Delete").disabled = true;
 			}
-			.sidenav a {
-				font-size: 18px;
-			}
-		}
+			setInterval(compileMarkdown, 200);
 
-		.sidenav a,
-		h4 {
-			padding: 6px 8px 6px 16px;
-			text-decoration: none;
-			font-size: 18px;
-			color: #818181;
-			display: block;
-		}
-	</style>
-	<script src="https://cdn.rawgit.com/showdownjs/showdown/1.0.1/dist/showdown.min.js"></script>
-	<link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+		</script>
+		
+	</head>
 
-	<!--<script src="//unpkg.com/@babel/polyfill@latest/dist/polyfill.min.js"></script>-->
-
-
-	<script type="text/javascript">
-		window.onload = function () {
-			listRepos('...')
-
-		}
-
-		function run() {
-			var text = document.getElementById('markdown').value,
-				target = document.getElementById('compiledMarkdown'),
-				converter = new showdown.Converter(),
-				html = converter.makeHtml(text);
-
-			target.innerHTML = html;
-		}
-		setInterval(run, 200);
-	</script>
-	<script>
-		function doFunction(clickedID) {
-			var xhr = new XMLHttpRequest();
-			xhr.open("POST", "http://127.0.0.1:8000", true);
-			xhr.setRequestHeader('Content-Type', 'application/json');
-			xhr.send(JSON.stringify({
-				operation: clickedID,
-				content: document.getElementById("markdown").value
-			}));
-		}
-
-	</script>
-	<script>
-		function listFiles(clickedID) {
-			var xhr = new XMLHttpRequest();
-			xhr.open("POST", "http://127.0.0.1:8000", true);
-			xhr.setRequestHeader('Content-Type', 'application/json');
-			xhr.send(JSON.stringify({
-				operation: "listFiles",
-				content: clickedID
-			}));
-		}
-
-	</script>
-	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-	<script>
-		function listRepos(clickedID) {
-			console.log(clickedID)
-			axios.post('http://127.0.0.1:8000', {
-				operation: "listRepos",
-				content: clickedID
-			})
-				.then(function (response) {
-					console.log(response.data)
-					var name = document.getElementById("markdowns");
-					document.getElementById("markdowns").innerHTML = "";
-					for (var I = 0; I < response.data.length; I++) {
-						nameList = "<a id='" + response.data[I].Name + "' href='javascript:;' onclick='listFilesFromRepo(this.id);'>" + response.data[I].Name + "</a>";
-						document.getElementById("markdowns").innerHTML += nameList;
-					}
-				})
-				.catch(function (error) {
-					console.log(response)
-				});
-		}
-	</script>
-	<script>
-		var repo = ""
-		function listFilesFromRepo(clickedID) {
-			console.log(clickedID)
-			repo = clickedID
-			axios.post('http://127.0.0.1:8000', {
-				operation: "listFiles",
-				content: clickedID
-			})
-				.then(function (response) {
-					console.log(response.data)
-					var name = document.getElementById("markdowns");
-					document.getElementById("markdowns").innerHTML = "";
-					for (var I = 0; I < response.data.length; I++) {
-
-						nameList = "<a id='" + response.data[I].Name + "' href='javascript:;' onclick='getFileContent(this.id);'>" + response.data[I].Name + "</a>";
-						document.getElementById("markdowns").innerHTML += nameList;
-					}
-				})
-				.catch(function (error) {
-					console.log(response)
-				});
-		}
-
-	</script>
-	<script>
-		function getFileContent(clickedID) {
-			console.log("Repo: " + repo)
-			console.log("getFileContent(" + clickedID + ")")
-			if (clickedID == '...') {
-				listRepos(clickedID)
-				return
-			}
-			axios.post('http://127.0.0.1:8000', {
-				operation: "getFileContent",
-				content: clickedID,
-				repo: repo
-			})
-				.then(function (response) {
-					console.log(response.data)
-					document.getElementById("markdown").innerHTML = response.data
-				})
-				.catch(function (error) {
-					console.log(response)
-				});
-		}
-	</script>
-
-</head>
-
-<body>
-	<div id="markdowns" class="sidenav">
-		<h4>LOADING...</h4>
-	</div>
-	<div class="main">
-		<div>
-			<button id="Create" type="button" class="btn btn-primary btn-md" onclick="doFunction(this.id);">Create</button>
-			<button id="Update" type="button" class="btn btn-primary btn-md" onclick="doFunction(this.id);">Update</button>
+	<body>
+		<div id="markdowns" class="sidenav">
+			<h4>LOADING...</h4>
 		</div>
-		<div id="editor">
-			<textarea id="markdown"></textarea>
-			<div id="compiledMarkdown" class="scroll"></div>
+		<div class="main">
+			<div>
+				<button id="Create" type="button" class="btn btn-primary btn-sm" onclick="sendCUD(this.id);">Create</button>
+				<button id="Update" type="button" class="btn btn-primary btn-sm" onclick="sendCUD(this.id);">Update</button>
+				<button id="Delete" type="button" class="btn btn-danger btn-sm" onclick="sendCUD(this.id);">Delete</button>
+				<span class='glyphicon glyphicon-folder-open'></span>        
+			</div>
+			<div id="editor">
+				<textarea id="markdown"></textarea>
+				<div id="compiledMarkdown" class="scroll"></div>
+			</div>
 		</div>
-	</div>
 
-</body>
+	</body>
 
 </html>
