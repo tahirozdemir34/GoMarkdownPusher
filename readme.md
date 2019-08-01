@@ -6,6 +6,5 @@ create a config.json as follow:
 {
     "token" : "your token",
     "username" : "your username",
-    "repo" : "name of the repository"
 }
 ```

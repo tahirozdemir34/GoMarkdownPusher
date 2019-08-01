@@ -10,16 +10,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
-
-	"encoding/base64"
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 )
 
-type markdown struct {
+type Request struct {
 	Operation string `json:"operation"`
 	Content   string `json:"content"`
 }
@@ -28,13 +27,19 @@ type Config struct {
 	Token    string `json:"token"`
 	Username string `json:"username"`
 }
-type Markdown struct {
+type File struct {
 	Name string
+	Type string
+	Path string
 }
 
 var config Config
 var activeRepo = "..."
-var activeFile = "..."
+var activeDir = "..."
+var ctx context.Context
+var ts oauth2.TokenSource
+var tc *http.Client
+var client *github.Client
 
 func setupResponse(w *http.ResponseWriter, req *http.Request) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
@@ -52,45 +57,84 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 		t.Execute(w, nil)
 	} else if r.Method == "POST" {
 		// POST
-		ctx := context.Background() //TODO: Make ctx, ts, tc and client global
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: config.Token},
-		)
-		tc := oauth2.NewClient(ctx, ts)
-		client := github.NewClient(tc)
 		println("POST")
 		decoder := json.NewDecoder(r.Body)
-		var t markdown
-		err := decoder.Decode(&t)
+		var req Request
+		err := decoder.Decode(&req)
 		if err != nil {
 			panic(err)
 		}
-		log.Println(t.Operation)
-		log.Println(t.Content)
-		operation := strings.Split(t.Operation, "$")
+		log.Println(req.Operation)
+		log.Println(req.Content)
+		operation := strings.Split(req.Operation, "/")
 		if operation[0] == "Create" {
-			createFile(activeRepo, operation[1], t.Content)
+			go createFile(activeRepo, operation[1], req.Content)
 		} else if operation[0] == "Delete" {
-			deleteFile(t.Content, activeRepo, activeFile)
+			go deleteFile(req.Content, activeRepo, activeDir)
 		} else if operation[0] == "Update" {
-			updateFile(t.Content, activeRepo, activeFile)
-		} else if operation[0] == "listFiles" {
-			_, content, _, err := client.Repositories.GetContents(ctx, config.Username, t.Content, "", nil)
+			go updateFile(req.Content, activeRepo, activeDir)
+		} else if operation[0] == "listFilesFromDir" {
+			println("fromdir")
+			_, content, _, err := client.Repositories.GetContents(ctx, config.Username, activeRepo, req.Content, nil)
 			if err != nil {
 				panic(err)
 			}
-			activeRepo = t.Content
-			list := []Markdown{}
-			list = append(list, Markdown{"..."})
+			activeDir = req.Content
+			list := []File{}
 			for _, element := range content {
+
 				var extension = filepath.Ext(*element.Name)
-				if extension == ".md" || extension == ".MD" {
-					var temp Markdown
-					temp.Name = *element.Name
+				if strings.EqualFold(extension, ".md") || element.GetType() == "dir" || strings.EqualFold(extension, "") {
+					var temp File
+					temp.Name = element.GetName()
+					temp.Type = element.GetType()
+					temp.Path = element.GetPath()
 					list = append(list, temp)
 				}
 			}
+			sort.Slice(list, func(i, j int) bool {
+				if list[i].Type < list[j].Type {
+					return true
+				}
+				if list[i].Type > list[j].Type {
+					return false
+				}
+				return strings.ToLower(list[i].Name) < strings.ToLower(list[j].Name)
+			})
+			data, err := json.Marshal(list)
+			if err != nil {
+				panic(err)
+			}
+			w.WriteHeader(200)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(data)
+		} else if operation[0] == "listFilesFromRepo" {
+			_, content, _, err := client.Repositories.GetContents(ctx, config.Username, req.Content, "", nil)
+			if err != nil {
+				panic(err)
+			}
+			activeRepo = req.Content
+			list := []File{}
+			for _, element := range content {
 
+				var extension = filepath.Ext(*element.Name)
+				if strings.EqualFold(extension, ".md") || element.GetType() == "dir" {
+					var temp File
+					temp.Name = element.GetName()
+					temp.Type = element.GetType()
+					temp.Path = element.GetPath()
+					list = append(list, temp)
+				}
+			}
+			sort.Slice(list, func(i, j int) bool {
+				if list[i].Type < list[j].Type {
+					return true
+				}
+				if list[i].Type > list[j].Type {
+					return false
+				}
+				return strings.ToLower(list[i].Name) < strings.ToLower(list[j].Name)
+			})
 			data, err := json.Marshal(list)
 			if err != nil {
 				panic(err)
@@ -99,14 +143,24 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
 		} else if operation[0] == "listRepos" {
-			repos, _, _ := client.Repositories.List(ctx, "", nil)
-			list := []Markdown{}
+			repos, _, err := client.Repositories.List(ctx, "", nil)
+			list := []File{}
 			for _, element := range repos {
-				var temp Markdown
-				temp.Name = *element.Name
+				var temp File
+				temp.Name = element.GetName()
+				temp.Path = element.GetCloneURL()
+				temp.Type = "Repo"
 				list = append(list, temp)
 			}
-
+			sort.Slice(list, func(i, j int) bool {
+				if list[i].Type < list[j].Type {
+					return true
+				}
+				if list[i].Type > list[j].Type {
+					return false
+				}
+				return strings.ToLower(list[i].Name) < strings.ToLower(list[j].Name)
+			})
 			data, err := json.Marshal(list)
 			if err != nil {
 				panic(err)
@@ -115,17 +169,18 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
 		} else if operation[0] == "getFileContent" {
-			content, _, _, err := client.Repositories.GetContents(ctx, config.Username, activeRepo, t.Content, nil)
+			content, _, _, err := client.Repositories.GetContents(ctx, config.Username, activeRepo, req.Content, nil)
 			if err != nil {
 				panic(err)
 			}
-			activeFile = t.Content
-			decoded, err := base64.StdEncoding.DecodeString(*content.Content)
+
+			decoded, err := content.GetContent()
 			println(string(decoded))
 			if err != nil {
 				panic(err)
 			}
-			data, err := json.Marshal(string(decoded))
+
+			data, err := json.Marshal(decoded)
 			if err != nil {
 				panic(err)
 			}
@@ -133,7 +188,6 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
 		}
-
 	} else if (*r).Method == "OPTIONS" {
 		return
 
@@ -145,13 +199,6 @@ func createFile(reponame string, filename string, content string) {
 
 	fName := strings.Split(filename, ".")
 
-	ctx := context.Background() //TODO: Make ctx, ts, tc and client global
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: config.Token},
-	)
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
-
 	fileContent := []byte(content)
 	opts := &github.RepositoryContentFileOptions{
 		Message: github.String(time.Now().String()),
@@ -159,18 +206,12 @@ func createFile(reponame string, filename string, content string) {
 		Branch:  github.String("master"),
 		//Committer: &github.CommitAuthor{Name: github.String("FirstName LastName"), Email: github.String("user@example.com")},
 	}
-	client.Repositories.CreateFile(ctx, config.Username, reponame, fName[0]+".md", opts)
+
+	client.Repositories.CreateFile(ctx, config.Username, reponame, activeDir+"/"+fName[0], opts)
 
 }
 
 func deleteFile(content, reponame string, filename string) {
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: config.Token},
-	)
-	tc := oauth2.NewClient(ctx, ts)
-
-	client := github.NewClient(tc)
 	optsForGet := &github.RepositoryContentGetOptions{
 		Ref: "master",
 	}
@@ -194,13 +235,6 @@ func deleteFile(content, reponame string, filename string) {
 }
 
 func updateFile(content, reponame string, filename string) {
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: config.Token},
-	)
-	tc := oauth2.NewClient(ctx, ts)
-
-	client := github.NewClient(tc)
 	optsForGet := &github.RepositoryContentGetOptions{
 		Ref: "master",
 	}
@@ -224,16 +258,25 @@ func updateFile(content, reponame string, filename string) {
 }
 
 func main() {
+
 	jsonFile, err := os.Open("config.json")
 	if err != nil {
 		panic(err)
 	}
 	defer jsonFile.Close()
+
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	json.Unmarshal(byteValue, &config)
 
 	fmt.Println(config.Username)
 	fmt.Println(config.Token)
+
+	ctx = context.Background()
+	ts = oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: config.Token},
+	)
+	tc = oauth2.NewClient(ctx, ts)
+	client = github.NewClient(tc)
 
 	http.HandleFunc("/", md_editor)
 	fmt.Println("Listenning and serving on port 8000. Please visit 127.0.0.1:8000...")
