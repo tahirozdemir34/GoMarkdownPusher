@@ -9,27 +9,29 @@ function sendCUD(clickedID) {
             alert("You must enter a valid filename...")
         }
         else {
-            xhr.send(JSON.stringify({
-                operation: clickedID + "/" + fileName,
-                content: document.getElementById("markdown").value
-            }));
-            alert("File created...")
-
-            if (dir.length == 0) {
-                listFilesFromRepo(repo)
-                return
-            }
-            else if (fileSelected) {
+            if (fileSelected && dir.length>0) {
                 dir = dir.split("/")
                 dir.pop()
                 dir = dir.join("/")
-                listFilesFromDir(dir)
-                dir += "/" + fileName
+            }
+            if (dir.length>0)
+                dir += "/"
+            xhr.send(JSON.stringify({
+                operation: clickedID + "//" + dir+fileName,
+                content: document.getElementById("markdown").value
+            }));
+            alert("File created...")
+            console.log(fileSelected)
+            if (dir.length == 0) {
+                listFilesFromRepo(repo)
+                dir += fileName
                 getFileContent(dir)
                 return
             }
             else {
                 listFilesFromDir(dir)
+                dir += fileName
+                getFileContent(dir)
                 return
             }
 
@@ -51,6 +53,10 @@ function sendCUD(clickedID) {
         }));
         alert("File deleted")
         document.getElementById("markdown").value = ""
+        if(dir.length == 0){
+            listFilesFromRepo(repo)
+            return
+        }
         dir = dir.split("/")
         dir.pop()
         dir = dir.join("/")

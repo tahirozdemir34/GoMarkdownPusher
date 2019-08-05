@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
@@ -66,7 +65,7 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Println(req.Operation)
 		log.Println(req.Content)
-		operation := strings.Split(req.Operation, "/")
+		operation := strings.Split(req.Operation, "//")
 		if operation[0] == "Create" {
 			go createFile(activeRepo, operation[1], req.Content)
 		} else if operation[0] == "Delete" {
@@ -118,7 +117,7 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 			for _, element := range content {
 
 				var extension = filepath.Ext(*element.Name)
-				if strings.EqualFold(extension, ".md") || element.GetType() == "dir" {
+				if strings.EqualFold(extension, ".md") || element.GetType() == "dir" || strings.EqualFold(extension, "") {
 					var temp File
 					temp.Name = element.GetName()
 					temp.Type = element.GetType()
@@ -184,6 +183,7 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				panic(err)
 			}
+			activeDir = req.Content
 			w.WriteHeader(200)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
@@ -196,18 +196,19 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func createFile(reponame string, filename string, content string) {
-
-	fName := strings.Split(filename, ".")
+	println("CREATE")
 
 	fileContent := []byte(content)
 	opts := &github.RepositoryContentFileOptions{
-		Message: github.String(time.Now().String()),
+		Message: github.String(filename + " created."),
 		Content: fileContent,
 		Branch:  github.String("master"),
 		//Committer: &github.CommitAuthor{Name: github.String("FirstName LastName"), Email: github.String("user@example.com")},
 	}
-
-	client.Repositories.CreateFile(ctx, config.Username, reponame, activeDir+"/"+fName[0], opts)
+	_, _, err := client.Repositories.CreateFile(ctx, config.Username, reponame, filename, opts)
+	if err != nil {
+		panic(err)
+	}
 
 }
 
@@ -222,7 +223,7 @@ func deleteFile(content, reponame string, filename string) {
 	fmt.Println(file.SHA)
 	fileContent := []byte(content)
 	optsForUpdate := &github.RepositoryContentFileOptions{
-		Message: github.String(time.Now().String()),
+		Message: github.String(filename + " deleted."),
 		Content: fileContent,
 		Branch:  github.String("master"),
 		SHA:     file.SHA,
@@ -238,14 +239,17 @@ func updateFile(content, reponame string, filename string) {
 	optsForGet := &github.RepositoryContentGetOptions{
 		Ref: "master",
 	}
+	println(reponame)
+	println(filename)
 	file, _, _, err := client.Repositories.GetContents(ctx, config.Username, reponame, filename, optsForGet)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Println(file.SHA)
 	fileContent := []byte(content)
 	optsForUpdate := &github.RepositoryContentFileOptions{
-		Message: github.String(time.Now().String()),
+		Message: github.String(filename + " updated."),
 		Content: fileContent,
 		Branch:  github.String("master"),
 		SHA:     file.SHA,

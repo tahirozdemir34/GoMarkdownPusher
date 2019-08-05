@@ -41,8 +41,14 @@ function listFilesFromDir(clickedID) {
         }
         dir = dir.split("/")
         dir.pop()
-        if (fileSelected)
+        if (fileSelected){
+            fileSelected = false
+            if(dir.length == 0){
+                listRepos()
+                return
+            }
             dir.pop()
+        }
         if (dir.length == 0) {
             dir = ""
             listFilesFromRepo(repo)
@@ -53,7 +59,7 @@ function listFilesFromDir(clickedID) {
     }
     else
         dir = clickedID
-    fileSelected = false
+    
 
     axios.post('http://127.0.0.1:8000', {
         operation: 'listFilesFromDir',
