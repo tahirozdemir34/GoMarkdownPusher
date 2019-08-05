@@ -4,7 +4,12 @@ function sendCUD(clickedID) {
     xhr.open("POST", "http://127.0.0.1:8000", true);
     xhr.setRequestHeader('Content-Type', 'application/json');
     if (clickedID == "Create") {
+        if(document.getElementById("markdown").value.length == 0){
+            alert("You must provide a content...")
+            return
+        }
         var fileName = prompt("Please enter file name", "");
+
         if (!isValidFileName(fileName)) {
             alert("You must enter a valid filename...")
         }
@@ -38,7 +43,10 @@ function sendCUD(clickedID) {
         }
     }
     else if (clickedID == "Update") {
-
+        if(document.getElementById("markdown").value.length == 0){
+            alert("You must provide a content...")
+            return
+        }
         xhr.send(JSON.stringify({
             operation: clickedID,
             content: document.getElementById("markdown").value

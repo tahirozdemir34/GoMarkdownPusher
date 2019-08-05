@@ -142,7 +142,8 @@ func md_editor(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(data)
 		} else if operation[0] == "listRepos" {
-			repos, _, err := client.Repositories.List(ctx, "", nil)
+			opt := &github.RepositoryListOptions{Type: "owner"}
+			repos, _, err := client.Repositories.List(ctx, "", opt)
 			list := []File{}
 			for _, element := range repos {
 				var temp File
