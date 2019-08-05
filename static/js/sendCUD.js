@@ -9,7 +9,6 @@ function sendCUD(clickedID) {
             return
         }
         var fileName = prompt("Please enter file name", "");
-
         if (!isValidFileName(fileName)) {
             alert("You must enter a valid filename...")
         }
@@ -76,6 +75,6 @@ var isValidFileName = (function () {
     var rg1 = /^[^\\/:\*\?"<>\|]+$/;
     var rg2 = /^(nul|prn|con|lpt[0-9]|com[0-9])(\.|$)/i;
     return function isValid(fname) {
-        return rg1.test(fname) && !rg2.test(fname);
+        return rg1.test(fname) && !rg2.test(fname) && fname !=null;
     }
 })();
