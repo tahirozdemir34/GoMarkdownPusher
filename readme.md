@@ -29,6 +29,14 @@ go run md_editor.go
 ```
 * go to localhost:8000
 
+### With Docker:
+* Run the following command:
+```bash
+docker run -p 8000:8000 -e GITHUB_USERNAME='username' \
+-e GITHUB_TOKEN='token' \
+--name go-mdp tahirozdemir34/go-markdown-pusher
+```
+
 You can watch a sample usage here:
 [![Youtube](https://i.ibb.co/8XmRRS0/image.png)](https://youtu.be/EwRYA8RIWLo)
 
