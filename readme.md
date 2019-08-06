@@ -1,5 +1,7 @@
 # ATTENTION: This project is highly experimental
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/tahirozdemir34/GoMarkdownPusher)](https://goreportcard.com/report/github.com/tahirozdemir34/GoMarkdownPusher)
+
 This is a simple web application that allows you to create, update and delete markdown files in your GitHub repositories. 
 
 Used libraries:
@@ -22,15 +24,19 @@ Used libraries:
     "username" : "your username",
 }
 ```
+
 * Alternatively, define environment variables "GITHUB_USERNAME" and "GITHUB_TOKEN" instead of creating "config.json"
 * Run the program as follow:
+
 ```bash
 go run md_editor.go
 ```
+
 * go to localhost:8000
 
 ### With Docker:
 * Run the following command:
+
 ```bash
 docker run -p 8000:8000 -e GITHUB_USERNAME='username' \
 -e GITHUB_TOKEN='token' \
@@ -38,6 +44,7 @@ docker run -p 8000:8000 -e GITHUB_USERNAME='username' \
 ```
 
 You can watch a sample usage here:
+
 [![Youtube](https://i.ibb.co/8XmRRS0/image.png)](https://youtu.be/EwRYA8RIWLo)
 
 *This readme file is created by using GoMarkdownPusher*
