@@ -14,7 +14,7 @@ Used libraries:
 
 ### How to use:
 * Get a token from Settings>Developer Settings>Personal access tokens
-* create a config.json next to 'md_editor.go' as follow:
+* Create "config.json" next to 'md_editor.go' as follow:
 
 ```json
 {
@@ -22,10 +22,14 @@ Used libraries:
     "username" : "your username",
 }
 ```
+* Alternatively, define environment variables "GITHUB_USERNAME" and "GITHUB_TOKEN" instead of creating "config.json"
 * Run the program as follow:
 ```bash
 go run md_editor.go
 ```
 * go to localhost:8000
 
-*This readme file created by using GoMarkdownPusher*
+You can watch a sample usage here:
+[![Youtube](https://i.ibb.co/8XmRRS0/image.png)](https://youtu.be/EwRYA8RIWLo)
+
+*This readme file is created by using GoMarkdownPusher*

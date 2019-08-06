@@ -266,7 +266,17 @@ func main() {
 
 	jsonFile, err := os.Open("config.json")
 	if err != nil {
-		panic(err)
+		println("\"config.json\" is not found...")
+		config.Username = os.Getenv("GITHUB_USERNAME")
+		config.Token = os.Getenv("GITHUB_TOKEN")
+		if config.Username == "" {
+			println("\"GITHUB_USERNAME\" environment variable is not defined.")
+			return
+		} else if config.Token == "" {
+			println("\"GITHUB_TOKEN\" environment variable is not defined.")
+			return
+		}
+		println("\"GITHUB_USERNAME\" and \"GITHUB_TOKEN\" are loaded from environment.")
 	}
 	defer jsonFile.Close()
 
