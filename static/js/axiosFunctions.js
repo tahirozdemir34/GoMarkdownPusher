@@ -6,8 +6,7 @@ function listRepos(clickedID) {
     fileSelected = false
     repo = ""
     console.log(clickedID)
-    console.log(self.location.origin)
-    axios.post('http://127.0.0.1:8000', {
+    axios.post(self.location.origin, {
         operation: "listRepos",
         content: clickedID
     })
