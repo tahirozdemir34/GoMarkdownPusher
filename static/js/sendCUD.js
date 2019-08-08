@@ -1,7 +1,7 @@
 function sendCUD(clickedID) {
 
     var xhr = new XMLHttpRequest();
-    xhr.open("POST", "http://127.0.0.1:8000", true);
+    xhr.open("POST", self.location.origin, true);
     xhr.setRequestHeader('Content-Type', 'application/json');
     if (clickedID == "Create") {
         if(document.getElementById("markdown").value.length == 0){

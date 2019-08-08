@@ -6,6 +6,7 @@ function listRepos(clickedID) {
     fileSelected = false
     repo = ""
     console.log(clickedID)
+    console.log(self.location.origin)
     axios.post('http://127.0.0.1:8000', {
         operation: "listRepos",
         content: clickedID
@@ -61,7 +62,7 @@ function listFilesFromDir(clickedID) {
         dir = clickedID
     
 
-    axios.post('http://127.0.0.1:8000', {
+    axios.post(self.location.origin, {
         operation: 'listFilesFromDir',
         content: dir
     })
@@ -91,7 +92,7 @@ function listFilesFromRepo(clickedID) {
     fileSelected = false
     console.log(clickedID)
     repo = clickedID
-    axios.post('http://127.0.0.1:8000', {
+    axios.post(self.location.origin, {
         operation: 'listFilesFromRepo',
         content: clickedID
     })
@@ -128,7 +129,7 @@ function getFileContent(clickedID) {
         document.getElementById("Delete").disabled = true;
         return
     }
-    axios.post('http://127.0.0.1:8000', {
+    axios.post(self.location.origin, {
         operation: "getFileContent",
         content: clickedID,
         repo: repo
